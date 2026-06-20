@@ -5,6 +5,7 @@
 "use client";
 import { wrapFetchWithPayment, x402Client } from "@x402/fetch";
 import { ExactEvmScheme } from "@x402/evm/exact/client";
+import { UptoEvmScheme } from "@x402/evm/upto/client";
 import { createWalletClient, custom } from "viem";
 import { base } from "viem/chains";
 
@@ -76,11 +77,13 @@ export async function connectWallet(): Promise<Connection> {
       }),
   };
 
-  // Register both Base networks so the client satisfies whatever the server
-  // requires (mainnet by default; testnet still works if NETWORK is changed).
+  // Register both Base networks and both schemes — "exact" for fixed-price
+  // routes (prices) and "upto" for the dynamically-priced analyst route.
   const client = new x402Client()
     .register("eip155:8453", new ExactEvmScheme(signer))
-    .register("eip155:84532", new ExactEvmScheme(signer));
+    .register("eip155:8453", new UptoEvmScheme(signer))
+    .register("eip155:84532", new ExactEvmScheme(signer))
+    .register("eip155:84532", new UptoEvmScheme(signer));
   const paidFetch = wrapFetchWithPayment(fetch, client) as typeof fetch;
   return { address, paidFetch };
 }

@@ -70,6 +70,62 @@ export async function GET() {
           },
         },
       },
+      "/api/tools/query": {
+        post: {
+          tags: ["query"],
+          operationId: "askAnalyst",
+          summary: "Ask the AI data analyst",
+          description:
+            "Natural-language analytics question. A Claude agent writes and runs DuneSQL via the hosted Dune MCP server and returns a written answer. Paid with the x402 'upto' scheme — billed for actual usage up to a max.",
+          parameters: [{ $ref: "#/components/parameters/XPaymentHeader" }],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    prompt: {
+                      type: "string",
+                      description: "The analytics question to answer",
+                      example:
+                        "Top 5 Base tokens by transfer count in the last 24h",
+                    },
+                    chainId: {
+                      type: "number",
+                      description: "Optional chain context",
+                    },
+                  },
+                  required: ["prompt"],
+                },
+              },
+            },
+          },
+          responses: {
+            "200": {
+              description: "Analyst answer",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      answer: {
+                        type: "string",
+                        description: "The written, data-backed answer",
+                      },
+                      model: { type: "string" },
+                      usage: { type: "object" },
+                    },
+                    required: ["answer", "model"],
+                  },
+                },
+              },
+            },
+            "400": { description: "Invalid body" },
+            "402": { $ref: "#/components/responses/X402PaymentRequired" },
+          },
+        },
+      },
     },
     components: {
       parameters: {

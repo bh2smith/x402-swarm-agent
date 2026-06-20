@@ -19,9 +19,12 @@ async function main() {
 
   const result = await queryLlm({ prompt });
 
+  const u = result.usage;
   console.log("\n=== ANSWER ===\n" + result.answer);
   console.log(
-    `\nmodel: ${result.model} | tokens: in ${result.usage.inputTokens} / out ${result.usage.outputTokens} | est. cost ~$${result.costUsd.toFixed(4)}`,
+    `\nmodel: ${result.model} | tokens: in ${u.inputTokens} / out ${u.outputTokens}` +
+      ` | cache: read ${u.cacheReadTokens} / write ${u.cacheCreateTokens}` +
+      ` | est. cost ~$${result.costUsd.toFixed(4)}`,
   );
 }
 
