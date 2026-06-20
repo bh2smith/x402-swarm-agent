@@ -31,7 +31,12 @@ Be concise and factual. If the question is ambiguous or the data isn't available
 export interface AnalystResult {
   answer: string;
   model: string;
-  usage: { inputTokens: number; outputTokens: number };
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheCreateTokens: number;
+  };
   /** Actual call cost in USD (Claude tokens x rate x margin) — drives upto settlement. */
   costUsd: number;
 }
@@ -58,6 +63,8 @@ export async function queryLlm(q: Query): Promise<AnalystResult> {
 
   let inputTokens = 0;
   let outputTokens = 0;
+  let cacheReadTokens = 0;
+  let cacheCreateTokens = 0;
   let message: Anthropic.Beta.BetaMessage | undefined;
 
   for (let i = 0; i < MAX_CONTINUATIONS; i++) {
@@ -70,7 +77,15 @@ export async function queryLlm(q: Query): Promise<AnalystResult> {
       // Auth rides in the URL query (?api_key=…) since the connector is url-only.
       mcp_servers: [{ type: "url", url: duneMcpUrl, name: "dune" }],
       tools: [{ type: "mcp_toolset", mcp_server_name: "dune" }],
-      system: ANALYST_SYSTEM,
+      // Cache the stable system + tool prefix so pause_turn continuations re-read
+      // it at ~0.1x instead of re-billing it at full input price.
+      system: [
+        {
+          type: "text",
+          text: ANALYST_SYSTEM,
+          cache_control: { type: "ephemeral" },
+        },
+      ],
       messages,
       // mcp_servers / mcp_toolset may be ahead of the installed SDK's static types.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -78,6 +93,8 @@ export async function queryLlm(q: Query): Promise<AnalystResult> {
 
     inputTokens += message.usage.input_tokens;
     outputTokens += message.usage.output_tokens;
+    cacheReadTokens += message.usage.cache_read_input_tokens ?? 0;
+    cacheCreateTokens += message.usage.cache_creation_input_tokens ?? 0;
 
     // pause_turn: the server-side MCP tool loop hit its iteration cap — continue.
     if (message.stop_reason === "pause_turn") {
@@ -89,12 +106,17 @@ export async function queryLlm(q: Query): Promise<AnalystResult> {
 
   if (!message) throw new Error("no response from model");
 
+  // Cache reads bill at ~0.1x and cache writes at ~1.25x of the input rate.
   const costUsd =
-    (inputTokens * PRICE_IN + outputTokens * PRICE_OUT) * COST_MARGIN;
+    (inputTokens * PRICE_IN +
+      cacheCreateTokens * PRICE_IN * 1.25 +
+      cacheReadTokens * PRICE_IN * 0.1 +
+      outputTokens * PRICE_OUT) *
+    COST_MARGIN;
   return {
     answer: extractText(message),
     model: MODEL,
-    usage: { inputTokens, outputTokens },
+    usage: { inputTokens, outputTokens, cacheReadTokens, cacheCreateTokens },
     costUsd,
   };
 }
