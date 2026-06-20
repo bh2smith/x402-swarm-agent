@@ -15,7 +15,7 @@ const MAX_CONTINUATIONS = 8;
 const PRICE_IN = 3 / 1_000_000;
 const PRICE_OUT = 15 / 1_000_000;
 // Margin over raw Claude token cost to cover Dune credits + overhead.
-const COST_MARGIN = 1.6;
+const COST_MARGIN = 1.3;
 
 const ANALYST_SYSTEM = `You are an expert on-chain blockchain data analyst with live access to Dune Analytics through MCP tools.
 

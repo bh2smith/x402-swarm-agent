@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 // Hard ceiling that matches the route's `accepts.price` max in proxy.ts.
-const MAX_SETTLE_USD = 0.5;
+const MAX_SETTLE_USD = 2.0;
 
 export async function POST(request: NextRequest) {
   let body: unknown;

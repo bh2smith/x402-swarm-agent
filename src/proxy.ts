@@ -39,7 +39,7 @@ export const proxy = paymentProxy(
       description: "Token price endpoint",
     },
     "/api/tools/query": {
-      accepts: { scheme: "upto", payTo, price: "$0.50", network },
+      accepts: { scheme: "upto", payTo, price: "$2.00", network },
       description:
         "AI data-analyst query (Dune Analytics) — billed for actual usage up to the max",
     },
