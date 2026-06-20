@@ -15,6 +15,19 @@ const PRESETS: Token[] = [
   { symbol: "DEGEN", address: "0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed", chainId: 8453 },
 ];
 
+const ANALYST_PRESETS = [
+  "How many Ethereum transactions were there yesterday?",
+  "Top 5 Base tokens by transfer count in the last 24h",
+  "Daily active addresses on Base over the past week",
+];
+
+type Answer = {
+  answer: string;
+  model: string;
+  settled?: string;
+  receiptRef?: string;
+};
+
 type Receipt = {
   ts: string;
   token: Token;
@@ -62,6 +75,13 @@ export default function Home() {
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [ledger, setLedger] = useState<LedgerEntry[]>([]);
   const [ledgerNote, setLedgerNote] = useState<string>("");
+  const [aPrompt, setAPrompt] = useState("");
+  const [aPhase, setAPhase] = useState<"idle" | "asking">("idle");
+  const [aMsg, setAMsg] = useState<{ kind: "" | "err" | "work"; text: string }>({
+    kind: "",
+    text: "",
+  });
+  const [aResult, setAResult] = useState<Answer | null>(null);
 
   const loadLedger = useCallback(async () => {
     try {
@@ -142,6 +162,44 @@ export default function Home() {
       setPhase("idle");
     }
   }, [active, addr, loadLedger]);
+
+  const onAsk = useCallback(async () => {
+    if (!paidFetch.current || !aPrompt.trim()) return;
+    setAPhase("asking");
+    setAResult(null);
+    setAMsg({ kind: "work", text: "Signing, then the agent queries Dune… (~30s)" });
+    try {
+      const res = await paidFetch.current("/api/tools/query", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ prompt: aPrompt.trim() }),
+      });
+      if (!res.ok) throw new Error(`Server responded ${res.status}.`);
+      const data = (await res.json()) as { answer: string; model: string };
+      const settle = decodeSettlement(res.headers.get("payment-response"));
+      const settled = settle?.amount
+        ? `$${(Number(settle.amount) / 1e6).toFixed(4)} USDC`
+        : undefined;
+      setAResult({
+        answer: data.answer,
+        model: data.model,
+        settled,
+        receiptRef: res.headers.get("x-receipt") ?? undefined,
+      });
+      setAMsg({ kind: "", text: "" });
+      loadLedger();
+    } catch (e) {
+      const text = e instanceof Error ? e.message : "Query failed.";
+      setAMsg({
+        kind: "err",
+        text: /insufficient|balance|funds/i.test(text)
+          ? "Payment failed — your wallet needs USDC on Base."
+          : text,
+      });
+    } finally {
+      setAPhase("idle");
+    }
+  }, [aPrompt, loadLedger]);
 
   return (
     <>
@@ -368,6 +426,71 @@ export default function Home() {
             </div>
           </section>
         </div>
+      </div>
+
+      <div className="wrap">
+        <section className="panel rise" style={{ marginBottom: 84 }}>
+          <div className="panel-h">
+            <h2>Ask the analyst</h2>
+            <span className="n">04 / agent</span>
+          </div>
+          <p className="note" style={{ marginTop: 0 }}>
+            A natural-language question answered by a Claude agent that writes &amp; runs DuneSQL
+            live. You pay the <b style={{ color: "var(--ink)" }}>actual</b> compute cost in USDC
+            (x402 <code>upto</code>), capped at $2 — and get the same encrypted Swarm receipt.
+          </p>
+          <div className="presets" style={{ marginTop: 14 }}>
+            {ANALYST_PRESETS.map((p) => (
+              <button key={p} className="preset" onClick={() => setAPrompt(p)}>
+                {p.length > 38 ? p.slice(0, 38) + "…" : p}
+              </button>
+            ))}
+          </div>
+          <textarea
+            className="input textarea"
+            rows={3}
+            placeholder="e.g. What were the top 5 Base tokens by transfer count yesterday?"
+            value={aPrompt}
+            onChange={(e) => setAPrompt(e.target.value)}
+          />
+          <button
+            className="btn-accent btn"
+            onClick={addr ? onAsk : onConnect}
+            disabled={aPhase === "asking" || (!!addr && !aPrompt.trim())}
+          >
+            {aPhase === "asking" ? (
+              "Analyzing… this can take ~30s"
+            ) : addr ? (
+              <>
+                Ask <span className="sub">· sign &amp; pay actual cost</span>
+              </>
+            ) : (
+              "Connect wallet to ask"
+            )}
+          </button>
+          <div className={`status ${aMsg.kind}`}>{aMsg.text}</div>
+
+          {aResult && (
+            <div className="answer-slot">
+              <div className="answer-meta">
+                <span>
+                  answered by <b>{aResult.model}</b>
+                </span>
+                {aResult.settled && <span>charged {aResult.settled}</span>}
+                {aResult.receiptRef && (
+                  <a
+                    href={`${GATEWAY}${aResult.receiptRef}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    swarm receipt ↗
+                  </a>
+                )}
+              </div>
+              <div className="answer">{aResult.answer}</div>
+            </div>
+          )}
+        </section>
       </div>
 
       <div className="wrap">

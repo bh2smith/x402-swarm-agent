@@ -571,6 +571,52 @@ footer a:hover {
   animation-delay: 0.4s;
 }
 
+/* ── analyst panel ───────────────────────────────────────────────────────── */
+.textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 74px;
+  line-height: 1.6;
+  margin-top: 6px;
+}
+.answer-slot {
+  margin-top: 22px;
+  animation: rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.answer-meta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-bottom: 10px;
+}
+.answer-meta b {
+  color: var(--ink);
+  font-weight: 500;
+}
+.answer-meta a {
+  color: var(--honey-2);
+  border: 0;
+}
+.answer {
+  background: #0d0a07;
+  border: 1px solid var(--panel-line);
+  border-left: 2px solid var(--honey);
+  border-radius: 10px;
+  padding: 18px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink);
+}
+.answer a {
+  color: var(--honey-2);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -42,8 +42,9 @@ client ──GET /api/tools/prices──▶  x402 middleware (proxy.ts)
 | Route | Description |
 |---|---|
 | `GET /api/tools/prices?address=<token>&chainId=<id>` | x402-paywalled token price → `{ price, source }` (+ `X-RECEIPT`) |
+| `POST /api/tools/query` `{ prompt }` | **AI data analyst** — a Claude agent writes & runs DuneSQL via the Dune MCP and returns a written answer. Paid with x402 `upto` (billed for actual usage). |
 | `GET /api/ai-plugin` | OpenAPI 3.0 spec for the agent |
-| `GET /` | Swagger UI |
+| `GET /` | Demo UI (price lookups + the analyst); Swagger at `/docs` |
 
 ## Quick start
 
