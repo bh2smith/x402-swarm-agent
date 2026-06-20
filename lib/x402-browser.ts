@@ -6,11 +6,11 @@
 import { wrapFetchWithPayment, x402Client } from "@x402/fetch";
 import { ExactEvmScheme } from "@x402/evm/exact/client";
 import { createWalletClient, custom } from "viem";
-import { baseSepolia } from "viem/chains";
+import { base } from "viem/chains";
 
-// The deployed agent prices requests on Base Sepolia.
-export const PAYMENT_NETWORK = "eip155:84532";
-const BASE_SEPOLIA_HEX = "0x14a34"; // 84532
+// The agent prices requests on Base mainnet by default.
+export const PAYMENT_NETWORK = "eip155:8453";
+const BASE_MAINNET_HEX = "0x2105"; // 8453
 
 type Eip1193 = {
   request(args: { method: string; params?: unknown[] }): Promise<unknown>;
@@ -31,7 +31,7 @@ export interface Connection {
   paidFetch: typeof fetch;
 }
 
-/** Prompt the wallet, switch to Base Sepolia, and return a payment-enabled fetch. */
+/** Prompt the wallet, switch to Base mainnet, and return a payment-enabled fetch. */
 export async function connectWallet(): Promise<Connection> {
   const eth = injected();
   const accounts = (await eth.request({
@@ -42,7 +42,7 @@ export async function connectWallet(): Promise<Connection> {
   try {
     await eth.request({
       method: "wallet_switchEthereumChain",
-      params: [{ chainId: BASE_SEPOLIA_HEX }],
+      params: [{ chainId: BASE_MAINNET_HEX }],
     });
   } catch {
     // Wallet may not have the chain / user declined — payment will surface it.
@@ -50,7 +50,7 @@ export async function connectWallet(): Promise<Connection> {
 
   const wallet = createWalletClient({
     account: address,
-    chain: baseSepolia,
+    chain: base,
     transport: custom(eth),
   });
 
@@ -76,10 +76,11 @@ export async function connectWallet(): Promise<Connection> {
       }),
   };
 
-  const client = new x402Client().register(
-    PAYMENT_NETWORK,
-    new ExactEvmScheme(signer),
-  );
+  // Register both Base networks so the client satisfies whatever the server
+  // requires (mainnet by default; testnet still works if NETWORK is changed).
+  const client = new x402Client()
+    .register("eip155:8453", new ExactEvmScheme(signer))
+    .register("eip155:84532", new ExactEvmScheme(signer));
   const paidFetch = wrapFetchWithPayment(fetch, client) as typeof fetch;
   return { address, paidFetch };
 }

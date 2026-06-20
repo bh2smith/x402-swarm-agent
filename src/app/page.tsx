@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { connectWallet, decodeSettlement } from "@/lib/x402-browser";
 
 const GATEWAY = "https://api.gateway.ethswarm.org/bytes/";
-const BASESCAN = "https://sepolia.basescan.org/tx/";
+const BASESCAN = "https://basescan.org/tx/";
 const REPO = "https://github.com/bh2smith/x402-swarm-agent";
 
 type Token = { symbol: string; address: string; chainId: number };
@@ -108,7 +108,7 @@ export default function Home() {
     if (!paidFetch.current) return;
     setPhase("paying");
     setReceipt(null);
-    setMsg({ kind: "work", text: "Awaiting signature, then settling on Base Sepolia…" });
+    setMsg({ kind: "work", text: "Awaiting signature, then settling on Base…" });
     try {
       const url = `/api/tools/prices?address=${active.address}&chainId=${active.chainId}`;
       const res = await paidFetch.current(url);
@@ -135,7 +135,7 @@ export default function Home() {
       setMsg({
         kind: "err",
         text: /insufficient|balance|funds/i.test(text)
-          ? "Payment failed — your wallet needs Base Sepolia USDC."
+          ? "Payment failed — your wallet needs USDC on Base."
           : text,
       });
     } finally {
@@ -179,7 +179,7 @@ export default function Home() {
               rail <b>x402 v2 · USDC</b>
             </span>
             <span className="chip">
-              network <b>Base Sepolia</b>
+              network <b>Base</b>
             </span>
             <span className="chip">
               receipts <b>Swarm feed</b>
@@ -208,7 +208,7 @@ export default function Home() {
                 <span className="dot" />
                 connected&nbsp;
                 <b style={{ color: "var(--ink)" }}>{short(addr, 6, 4)}</b>
-                &nbsp;· Base Sepolia
+                &nbsp;· Base
               </div>
             )}
 
@@ -266,11 +266,7 @@ export default function Home() {
             <div className={`status ${msg.kind}`}>{msg.text}</div>
             {addr && (
               <p className="note">
-                Need test funds? Grab Base Sepolia USDC from the{" "}
-                <a href="https://faucet.circle.com" target="_blank" rel="noreferrer">
-                  Circle faucet
-                </a>
-                . Gas is sponsored — you only sign.
+                You pay in USDC on Base — $0.001 per call. Gas is sponsored, so you only sign once.
               </p>
             )}
           </section>
