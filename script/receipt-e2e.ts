@@ -67,10 +67,10 @@ async function main() {
 
   // 8. decodePayment parses a synthetic x402 v1 header.
   const header = Buffer.from(
-    JSON.stringify({ network: "base", payload: { authorization: { from: "0xabc", value: "1000", nonce: "0x01" } } }),
+    JSON.stringify({ x402Version: 2, accepted: { network: "eip155:8453" }, payload: { authorization: { from: "0xabc", value: "1000", nonce: "0x01" } } }),
   ).toString("base64");
   const p = decodePayment(header);
-  check("decodePayment extracts payer/amount/network", p.payer === "0xabc" && p.amount === "1000" && p.network === "base");
+  check("decodePayment extracts payer/amount/network", p.payer === "0xabc" && p.amount === "1000" && p.network === "eip155:8453");
 
   console.log(`\n${failures === 0 ? "✓ ALL CHECKS PASSED" : `✗ ${failures} CHECK(S) FAILED`}`);
   process.exit(failures === 0 ? 0 : 1);

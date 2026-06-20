@@ -4,15 +4,15 @@
 import { encryptResponse, appendReceipt, type PaymentInfo } from "./receipt";
 
 /**
- * Decode the base64 `X-PAYMENT` header (x402 v1 "exact" scheme) into the
- * verifiable bits we record. Returns {} on any malformed input.
+ * Decode the base64 `PAYMENT-SIGNATURE` header (x402 v2 "exact" scheme) into
+ * the verifiable bits we record. Returns {} on any malformed input.
  */
 export function decodePayment(header: string): PaymentInfo {
   try {
     const decoded = JSON.parse(
       Buffer.from(header, "base64").toString("utf-8"),
     ) as {
-      network?: string;
+      accepted?: { network?: string; asset?: string };
       payload?: {
         authorization?: { from?: string; value?: string; nonce?: string };
       };
@@ -22,7 +22,8 @@ export function decodePayment(header: string): PaymentInfo {
       payer: auth.from,
       amount: auth.value,
       nonce: auth.nonce,
-      network: decoded.network,
+      network: decoded.accepted?.network,
+      asset: decoded.accepted?.asset,
     };
   } catch {
     return {};
@@ -39,12 +40,12 @@ export async function recordOnResponse(args: {
   endpoint: string;
   request: unknown;
   response: unknown;
-  xPaymentHeader: string;
+  paymentHeader: string;
 }): Promise<{ responseRef: string } | null> {
   const { responseRef, responseAddress } = await encryptResponse(
     args.response,
   );
-  const payment = decodePayment(args.xPaymentHeader);
+  const payment = decodePayment(args.paymentHeader);
 
   // Fire-and-forget: the paid response must not block on the chain write.
   void appendReceipt({

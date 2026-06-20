@@ -1,27 +1,33 @@
 import { Address } from "viem";
-import { paymentMiddleware, Network } from "x402-next";
+import { paymentProxy, x402ResourceServer, type Network } from "@x402/next";
+import { HTTPFacilitatorClient } from "@x402/core/server";
+import { registerExactEvmScheme } from "@x402/evm/exact/server";
 import { facilitator } from "@coinbase/x402";
 
 const useCdpFacilitator = process.env.USE_CDP_FACILITATOR === "true";
 const payTo = (process.env.ADDRESS ||
   "0x54F08c27e75BeA0cdDdb8aA9D69FD61551B19BbA") as Address;
-const network = (process.env.NETWORK || "base") as Network;
+// x402 v2 networks are CAIP-2: Base mainnet = eip155:8453, Base Sepolia = eip155:84532.
+const network = (process.env.NETWORK || "eip155:8453") as Network;
 
-// Configure facilitator
-const facilitatorConfig = useCdpFacilitator ? facilitator : undefined;
+// CDP facilitator (Base mainnet) when enabled; otherwise the default
+// x402.org facilitator (testnet). Reads CDP_API_KEY_ID / CDP_API_KEY_SECRET.
+const facilitatorClient = new HTTPFacilitatorClient(
+  useCdpFacilitator ? facilitator : undefined,
+);
 
-export const proxy = paymentMiddleware(
-  payTo,
+// Resource server with the EVM "exact" scheme registered for eip155:* networks.
+const server = new x402ResourceServer(facilitatorClient);
+registerExactEvmScheme(server);
+
+export const proxy = paymentProxy(
   {
     "/api/tools/prices": {
-      price: "$0.001",
-      network,
-      config: {
-        description: "Protected API endpoint",
-      },
+      accepts: { scheme: "exact", payTo, price: "$0.001", network },
+      description: "Token price endpoint",
     },
   },
-  facilitatorConfig,
+  server,
   {
     appName: "Token Price API",
     appLogo: "/x402-icon-blue.png",

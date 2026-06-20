@@ -74,13 +74,13 @@ export async function GET() {
     components: {
       parameters: {
         XPaymentHeader: {
-          name: "x-payment",
+          name: "payment-signature",
           in: "header",
           // required: true,
           schema: {
             type: "string",
           },
-          description: "Base64-encoded x402 payment authorization payload",
+          description: "Base64-encoded x402 v2 PAYMENT-SIGNATURE payload",
         },
       },
       responses: {
@@ -99,8 +99,11 @@ export async function GET() {
         X402PaymentRequired: {
           type: "object",
           properties: {
-            x402Version: { type: "number", example: 1 },
-            error: { type: "string", example: "X-PAYMENT header is required" },
+            x402Version: { type: "number", example: 2 },
+            error: {
+              type: "string",
+              example: "PAYMENT-SIGNATURE header is required",
+            },
             accepts: {
               type: "array",
               items: { $ref: "#/components/schemas/X402Accept" },
@@ -114,13 +117,8 @@ export async function GET() {
             scheme: { type: "string", enum: ["exact"] },
             network: {
               type: "string",
-              enum: [
-                "base",
-                "base-sepolia",
-                "avalanche",
-                "avalanche-fuji",
-                "iotex",
-              ],
+              enum: ["eip155:8453", "eip155:84532"],
+              description: "CAIP-2 network id (Base mainnet / Base Sepolia)",
             },
             maxAmountRequired: {
               type: "string",

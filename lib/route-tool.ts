@@ -20,20 +20,20 @@ export async function toolRouter<S extends z.ZodTypeAny, T>(
   try {
     const res = await handler(validationResult.query);
 
-    // Record a verifiable Swarm receipt for paid requests. The presence of an
-    // `x-payment` header means the x402 middleware admitted a paid request.
-    // bee-js is dynamically imported so unpaid/Edge paths never bundle it; a
-    // failure here is best-effort and never blocks the paid response.
+    // Record a verifiable Swarm receipt for paid requests. The presence of a
+    // `payment-signature` header means the x402 v2 middleware admitted a paid
+    // request. bee-js is dynamically imported so unpaid/Edge paths never bundle
+    // it; a failure here is best-effort and never blocks the paid response.
     const headers = new Headers();
-    const xPayment = request.headers.get("x-payment");
-    if (xPayment && process.env.BEE_FEED_PK) {
+    const paymentHeader = request.headers.get("payment-signature");
+    if (paymentHeader && process.env.BEE_FEED_PK) {
       try {
         const { recordOnResponse } = await import("./swarm/record");
         const receipt = await recordOnResponse({
           endpoint: routeName,
           request: validationResult.query,
           response: res,
-          xPaymentHeader: xPayment,
+          paymentHeader,
         });
         if (receipt?.responseRef) headers.set("X-RECEIPT", receipt.responseRef);
       } catch (error) {
