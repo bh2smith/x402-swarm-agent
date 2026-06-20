@@ -30,7 +30,10 @@ const facilitatorClient = new HTTPFacilitatorClient(
 // which bills the actual per-call cost up to a max).
 const server = new x402ResourceServer(facilitatorClient);
 registerExactEvmScheme(server);
-server.register(network, new UptoEvmScheme());
+// Register "upto" on the same eip155:* wildcard as exact. Registering it on a
+// *specific* network creates a per-network entry that shadows the exact
+// wildcard for that network (breaking the price route) — so use the wildcard.
+server.register("eip155:*" as Network, new UptoEvmScheme());
 
 export const proxy = paymentProxy(
   {
