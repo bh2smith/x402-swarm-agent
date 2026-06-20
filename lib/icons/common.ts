@@ -1,5 +1,8 @@
 import { TokenQuery } from "../schema";
 
+// NOTE: icons are served from the public `bitte-public` GCS bucket. With bitte.ai
+// sunset this bucket may be decommissioned — rehost these assets before relying on
+// the (currently out-of-scope) token-metadata tier.
 const bucketUrl = "https://storage.googleapis.com/bitte-public";
 const tokensUrl = `${bucketUrl}/intents/tokens`;
 const chainsUrl = `${bucketUrl}/intents/chains`;
