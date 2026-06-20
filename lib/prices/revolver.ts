@@ -1,5 +1,4 @@
 // Class for fetching token prices from various sources.
-import { getAlchemyKey, getZerionKey } from "../../src/app/config";
 import { IconFeed, S3Archive } from "../icons";
 import { TokenQuery } from "../schema";
 import {
@@ -13,23 +12,34 @@ import {
 
 export class FeedRevolver implements PriceFeed {
   private sources: PriceFeed[];
-  private iconFeed: IconFeed;
+  private iconFeed: IconFeed | null;
   public get name(): string {
     return `FeedRevolver: ${this.sources.length} sources`;
   }
   constructor(sources: PriceFeed[]) {
     this.sources = sources;
-    this.iconFeed = S3Archive.withAllSources();
+    // Icon archiving (S3) is optional — never let it block price lookups.
+    try {
+      this.iconFeed = S3Archive.withAllSources();
+    } catch {
+      this.iconFeed = null;
+    }
   }
 
   static withAllSources(): FeedRevolver {
-    return new FeedRevolver([
+    const sources: PriceFeed[] = [
       new CoingeckoFeed(),
       new DefilamaFeed(),
       new DexScreenerFeed(),
-      new AlchemyFeed(getAlchemyKey()),
-      new ZerionFeed(getZerionKey()),
-    ]);
+    ];
+    // Keyed sources are optional — fall back to the keyless ones when unset.
+    if (process.env.ALCHEMY_KEY) {
+      sources.push(new AlchemyFeed(process.env.ALCHEMY_KEY));
+    }
+    if (process.env.ZERION_KEY) {
+      sources.push(new ZerionFeed(process.env.ZERION_KEY));
+    }
+    return new FeedRevolver(sources);
   }
 
   async getPrice(
@@ -63,7 +73,7 @@ export class FeedRevolver implements PriceFeed {
   }
 
   async getIcon(token: TokenQuery): Promise<string | null> {
-    return this.iconFeed.getIcon(token);
+    return this.iconFeed ? this.iconFeed.getIcon(token) : null;
   }
 
   private shuffleWithSeed<T>(array: T[], seed: number): T[] {
