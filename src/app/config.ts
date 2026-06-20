@@ -24,6 +24,14 @@ export function getAlchemyKey(): string {
   return getEnvVar("ALCHEMY_KEY");
 }
 
+export function getAnthropicKey(): string {
+  return getEnvVar("ANTHROPIC_API_KEY");
+}
+
+export function getDuneKey(): string {
+  return getEnvVar("DUNE_API_KEY");
+}
+
 const SUPPORTED_NETWORKS = [
   1, // mainnet
   100, // gnosis

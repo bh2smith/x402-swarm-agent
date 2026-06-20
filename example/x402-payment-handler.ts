@@ -15,6 +15,7 @@ import {
   decodePaymentResponseHeader,
 } from "@x402/fetch";
 import { ExactEvmScheme } from "@x402/evm/exact/client";
+import { UptoEvmScheme } from "@x402/evm/upto/client";
 import type { Network } from "@x402/core/types";
 
 /**
@@ -28,7 +29,11 @@ export function makePaidFetch(
   network: Network = "eip155:8453",
 ) {
   const signer = privateKeyToAccount(privateKey);
-  const client = new x402Client().register(network, new ExactEvmScheme(signer));
+  // Register both schemes: "exact" for fixed-price routes (prices) and "upto"
+  // for the dynamically-priced analyst route (/api/tools/query).
+  const client = new x402Client()
+    .register(network, new ExactEvmScheme(signer))
+    .register(network, new UptoEvmScheme(signer));
   return wrapFetchWithPayment(fetch, client);
 }
 
@@ -53,4 +58,31 @@ export async function withPayment(
     console.log("swarm receipt (decrypting ref):", receipt);
   }
   return response;
+}
+
+/**
+ * POST a natural-language prompt to the paid AI analyst endpoint
+ * (`/api/tools/query`), auto-handling the 402 + `upto` payment. Returns the
+ * parsed `{ answer, model, usage }`.
+ */
+export async function queryAnalyst(
+  baseUrl: string,
+  prompt: string,
+  privateKey: `0x${string}`,
+  network?: Network,
+): Promise<{ answer: string; model: string; usage: unknown }> {
+  const paidFetch = makePaidFetch(privateKey, network);
+  const response = await paidFetch(`${baseUrl.replace(/\/$/, "")}/api/tools/query`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ prompt }),
+  });
+  if (!response.ok) {
+    throw new Error(`analyst query failed: ${response.status} ${await response.text()}`);
+  }
+  const settlement = response.headers.get("payment-response");
+  if (settlement) {
+    console.log("settled:", decodePaymentResponseHeader(settlement));
+  }
+  return response.json();
 }

@@ -2,6 +2,7 @@ import { Address } from "viem";
 import { paymentProxy, x402ResourceServer, type Network } from "@x402/next";
 import { HTTPFacilitatorClient } from "@x402/core/server";
 import { registerExactEvmScheme } from "@x402/evm/exact/server";
+import { UptoEvmScheme } from "@x402/evm/upto/server";
 import { facilitator } from "@coinbase/x402";
 
 const useCdpFacilitator = process.env.USE_CDP_FACILITATOR === "true";
@@ -24,15 +25,23 @@ const facilitatorClient = new HTTPFacilitatorClient(
   useCdpFacilitator ? facilitator : undefined,
 );
 
-// Resource server with the EVM "exact" scheme registered for eip155:* networks.
+// Resource server with the EVM "exact" scheme (fixed-price routes) and the
+// "upto" scheme (dynamic/variable pricing — used by the AI analyst endpoint,
+// which bills the actual per-call cost up to a max).
 const server = new x402ResourceServer(facilitatorClient);
 registerExactEvmScheme(server);
+server.register(network, new UptoEvmScheme());
 
 export const proxy = paymentProxy(
   {
     "/api/tools/prices": {
       accepts: { scheme: "exact", payTo, price: "$0.001", network },
       description: "Token price endpoint",
+    },
+    "/api/tools/query": {
+      accepts: { scheme: "upto", payTo, price: "$2.00", network },
+      description:
+        "AI data-analyst query (Dune Analytics) — billed for actual usage up to the max",
     },
   },
   server,

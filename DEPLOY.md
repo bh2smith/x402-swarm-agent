@@ -18,6 +18,8 @@ Secrets must be encrypted env vars — never commit them. `.env*` and `.mcp.json
 |---|---|---|---|
 | `ALCHEMY_KEY` | recommended | Alchemy price feed key (one of several price sources; throws only if that feed is invoked) | https://dashboard.alchemy.com |
 | `ZERION_KEY` | optional | Zerion price feed key (another source) | https://developers.zerion.io |
+| `ANTHROPIC_API_KEY` | yes (for `/api/tools/query`) | Powers the Claude data-analyst loop (model `claude-sonnet-4-6`) | https://console.anthropic.com |
+| `DUNE_API_KEY` | yes (for `/api/tools/query`) | Used via the hosted Dune MCP server (`api.dune.com/mcp/v1?api_key=…`) for table discovery + SQL | https://dune.com → Settings → API Keys |
 | `ADDRESS` | **yes (prod)** | Your **payTo** wallet — the address that *receives* USDC. Falls back to a placeholder if unset | any wallet address you control |
 | `NETWORK` | yes | CAIP-2 network. Base mainnet `eip155:8453`, Base Sepolia `eip155:84532` | — |
 | `USE_CDP_FACILITATOR` | yes (mainnet) | `"true"` to settle via Coinbase CDP (required on Base mainnet) | — |

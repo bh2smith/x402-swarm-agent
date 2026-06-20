@@ -17,6 +17,14 @@ export const TokenQuerySchema = z.object({
 
 export type TokenQuery = z.infer<typeof TokenQuerySchema>;
 
+/** Body for the AI data-analyst endpoint (POST /api/tools/query). */
+export const QuerySchema = z.object({
+  prompt: z.string().min(1, "prompt is required"),
+  chainId: z.coerce.number().optional(),
+});
+
+export type Query = z.infer<typeof QuerySchema>;
+
 type ValidationResult<T> =
   | { ok: true; query: T }
   | { ok: false; error: string };
