@@ -340,6 +340,29 @@ label.lbl {
 .status.work {
   color: var(--honey-2);
 }
+.status.ok {
+  color: var(--good);
+}
+.spinner {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  margin-right: 4px;
+  vertical-align: -1px;
+  border: 2px solid rgba(26, 18, 6, 0.35);
+  border-top-color: #1a1206;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.ok-tag {
+  color: var(--good);
+  font-weight: 600;
+}
 
 /* ── receipt (thermal paper) ─────────────────────────────────────────────── */
 .receipt-slot {

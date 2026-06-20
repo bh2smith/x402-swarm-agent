@@ -77,10 +77,11 @@ export default function Home() {
   const [ledgerNote, setLedgerNote] = useState<string>("");
   const [aPrompt, setAPrompt] = useState("");
   const [aPhase, setAPhase] = useState<"idle" | "asking">("idle");
-  const [aMsg, setAMsg] = useState<{ kind: "" | "err" | "work"; text: string }>({
-    kind: "",
-    text: "",
-  });
+  const [aElapsed, setAElapsed] = useState(0);
+  const [aMsg, setAMsg] = useState<{
+    kind: "" | "err" | "work" | "ok";
+    text: string;
+  }>({ kind: "", text: "" });
   const [aResult, setAResult] = useState<Answer | null>(null);
 
   const loadLedger = useCallback(async () => {
@@ -167,14 +168,25 @@ export default function Home() {
     if (!paidFetch.current || !aPrompt.trim()) return;
     setAPhase("asking");
     setAResult(null);
-    setAMsg({ kind: "work", text: "Signing, then the agent queries Dune… (~30s)" });
+    setAElapsed(0);
+    const started = Date.now();
+    const timer = setInterval(
+      () => setAElapsed(Math.floor((Date.now() - started) / 1000)),
+      1000,
+    );
+    setAMsg({
+      kind: "work",
+      text: "Approve the payment in your wallet, then the agent discovers tables and runs the query…",
+    });
     try {
       const res = await paidFetch.current("/api/tools/query", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ prompt: aPrompt.trim() }),
       });
-      if (!res.ok) throw new Error(`Server responded ${res.status}.`);
+      // A 402 here means the x402 client couldn't complete the payment.
+      if (res.status === 402) throw new Error("PAYMENT_INCOMPLETE");
+      if (!res.ok) throw new Error(`Server error ${res.status}.`);
       const data = (await res.json()) as { answer: string; model: string };
       const settle = decodeSettlement(res.headers.get("payment-response"));
       const settled = settle?.amount
@@ -186,17 +198,27 @@ export default function Home() {
         settled,
         receiptRef: res.headers.get("x-receipt") ?? undefined,
       });
-      setAMsg({ kind: "", text: "" });
+      const secs = Math.floor((Date.now() - started) / 1000);
+      setAMsg({
+        kind: "ok",
+        text: `Answered in ${secs}s${settled ? ` · paid ${settled}` : ""}.`,
+      });
       loadLedger();
     } catch (e) {
-      const text = e instanceof Error ? e.message : "Query failed.";
-      setAMsg({
-        kind: "err",
-        text: /insufficient|balance|funds/i.test(text)
-          ? "Payment failed — your wallet needs USDC on Base."
-          : text,
-      });
+      const raw = e instanceof Error ? e.message : "Query failed.";
+      let text = raw;
+      if (raw === "PAYMENT_INCOMPLETE")
+        text =
+          "Payment didn't go through. Check that your wallet holds USDC on Base mainnet (chainId 8453) and that you approved the signature, then try again.";
+      else if (/insufficient|balance|funds/i.test(raw))
+        text = "Payment failed — your wallet needs USDC on Base.";
+      else if (/reject|denied|user/i.test(raw))
+        text = "Signature was rejected in your wallet.";
+      else if (/failed to fetch|networkerror|load failed|timeout/i.test(raw))
+        text = "Network error or the request timed out — try again.";
+      setAMsg({ kind: "err", text });
     } finally {
+      clearInterval(timer);
       setAPhase("idle");
     }
   }, [aPrompt, loadLedger]);
@@ -459,7 +481,9 @@ export default function Home() {
             disabled={aPhase === "asking" || (!!addr && !aPrompt.trim())}
           >
             {aPhase === "asking" ? (
-              "Analyzing… this can take ~30s"
+              <>
+                <span className="spinner" /> Working… {aElapsed}s
+              </>
             ) : addr ? (
               <>
                 Ask <span className="sub">· sign &amp; pay actual cost</span>
@@ -473,8 +497,9 @@ export default function Home() {
           {aResult && (
             <div className="answer-slot">
               <div className="answer-meta">
+                <span className="ok-tag">✓ answered</span>
                 <span>
-                  answered by <b>{aResult.model}</b>
+                  by <b>{aResult.model}</b>
                 </span>
                 {aResult.settled && <span>charged {aResult.settled}</span>}
                 {aResult.receiptRef && (
